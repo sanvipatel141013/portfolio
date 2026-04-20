@@ -1,61 +1,202 @@
 <!DOCTYPE html>
-<h2>Scientist · Researcher · Innovator</h2>
-<p>Turning data into discovery and research into real-world impact.</p>
-<a href="#projects" class="btn">View Work</a>
-</div>
-</section>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GitHub Club Portfolio</title>
+    <meta
+      name="description"
+      content="A polished portfolio hub that displays all repositories from a GitHub account."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <div class="container">
+        <p class="eyebrow">GitHub Club</p>
+        <h1>Your Repositories. One Beautiful Portfolio.</h1>
+        <p class="subtitle">
+          Enter your GitHub username to instantly generate a modern, responsive,
+          and functional repository showcase.
+        </p>
 
+        <form id="repoForm" class="repo-form" autocomplete="off">
+          <label for="username" class="sr-only">GitHub username</label>
+          <input
+            id="username"
+            name="username"
+            type="text"
+            placeholder="Enter GitHub username (e.g. octocat)"
+            required
+          />
+          <button type="submit">Load Repositories</button>
+        </form>
 
-<!-- ABOUT -->
-<section id="about" class="section">
-<div class="container">
-<h3 class="section-title">About Me</h3>
-<p class="section-text">
-I am a science-focused professional passionate about research, data analysis,
-and innovation. I combine analytical thinking with strong UI/UX principles
-to present complex scientific ideas in a clear, elegant way.
-</p>
-</div>
-</section>
+        <div id="status" class="status" role="status" aria-live="polite"></div>
+      </div>
+    </header>
 
+    <main class="container">
+      <section class="toolbar">
+        <div>
+          <h2 id="sectionTitle">All Repositories</h2>
+          <p id="repoMeta" class="muted"></p>
+        </div>
+        <div class="filters">
+          <label for="sort">Sort</label>
+          <select id="sort">
+            <option value="updated">Recently updated</option>
+            <option value="stars">Most starred</option>
+            <option value="name">Name (A-Z)</option>
+          </select>
+        </div>
+      </section>
 
-<!-- PROJECTS -->
-<section id="projects" class="section alt">
-<div class="container">
-<h3 class="section-title">Projects</h3>
-<div class="grid">
-<div class="card">
-<h4>Research Analysis Dashboard</h4>
-<p>Interactive data visualization for scientific insights.</p>
-</div>
-<div class="card">
-<h4>Scientific Visualization Tool</h4>
-<p>Transforms raw data into meaningful visual patterns.</p>
-</div>
-<div class="card">
-<h4>Data Modeling Experiment</h4>
-<p>Predictive models built using research-driven methodology.</p>
-</div>
-</div>
-</div>
-</section>
+      <section>
+        <div id="repoGrid" class="repo-grid"></div>
+      </section>
+    </main>
 
+    <template id="repoCardTemplate">
+      <article class="repo-card">
+        <div class="repo-top">
+          <h3><a class="repo-link" target="_blank" rel="noopener noreferrer"></a></h3>
+          <span class="badge"></span>
+        </div>
+        <p class="repo-desc"></p>
+        <div class="repo-stats">
+          <span class="stars">★ <strong></strong></span>
+          <span class="forks">⑂ <strong></strong></span>
+          <span class="updated"></span>
+        </div>
+      </article>
+    </template>
 
-<!-- CONTACT -->
-<section id="contact" class="section">
-<div class="container">
-<h3 class="section-title">Contact</h3>
-<p class="section-text">Email:</p>
-<a class="email" href="mailto:sanvipatel141013@gmail.com">sanvipatel141013@gmail.com</a>
-</div>
-</section>
+    <script>
+      const form = document.getElementById('repoForm');
+      const usernameInput = document.getElementById('username');
+      const statusEl = document.getElementById('status');
+      const repoGrid = document.getElementById('repoGrid');
+      const repoMeta = document.getElementById('repoMeta');
+      const sectionTitle = document.getElementById('sectionTitle');
+      const sortSelect = document.getElementById('sort');
+      const repoCardTemplate = document.getElementById('repoCardTemplate');
 
+      let repos = [];
 
-<!-- FOOTER -->
-<footer class="footer">
-<p>© 2026 Sanvi Patel · Scientist Portfolio</p>
-</footer>
+      function formatDate(iso) {
+        const date = new Date(iso);
+        return date.toLocaleDateString(undefined, {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+      }
 
+      function sortRepos(type) {
+        const copy = [...repos];
+        if (type === 'stars') {
+          copy.sort((a, b) => b.stargazers_count - a.stargazers_count);
+        } else if (type === 'name') {
+          copy.sort((a, b) => a.name.localeCompare(b.name));
+        } else {
+          copy.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+        }
+        return copy;
+      }
 
-</body>
+      function renderRepos(data) {
+        repoGrid.innerHTML = '';
+
+        if (!data.length) {
+          repoGrid.innerHTML = `
+            <article class="repo-card empty-state">
+              <h3>No repositories found.</h3>
+              <p class="muted">Try another username or check if the account has public repositories.</p>
+            </article>
+          `;
+          return;
+        }
+
+        const fragment = document.createDocumentFragment();
+
+        data.forEach((repo) => {
+          const card = repoCardTemplate.content.cloneNode(true);
+          const link = card.querySelector('.repo-link');
+          const badge = card.querySelector('.badge');
+          const desc = card.querySelector('.repo-desc');
+          const stars = card.querySelector('.stars strong');
+          const forks = card.querySelector('.forks strong');
+          const updated = card.querySelector('.updated');
+
+          link.textContent = repo.name;
+          link.href = repo.html_url;
+
+          badge.textContent = repo.language || 'Misc';
+          desc.textContent = repo.description || 'No description provided.';
+          stars.textContent = repo.stargazers_count;
+          forks.textContent = repo.forks_count;
+          updated.textContent = `Updated ${formatDate(repo.updated_at)}`;
+
+          fragment.appendChild(card);
+        });
+
+        repoGrid.appendChild(fragment);
+      }
+
+      async function loadRepos(username) {
+        statusEl.textContent = `Loading repositories for @${username}...`;
+        statusEl.className = 'status';
+
+        try {
+          const response = await fetch(
+            `https://api.github.com/users/${encodeURIComponent(username)}/repos?per_page=100&sort=updated`
+          );
+
+          if (!response.ok) {
+            throw new Error(response.status === 404 ? 'User not found.' : 'Unable to fetch repositories.');
+          }
+
+          repos = await response.json();
+          sectionTitle.textContent = `@${username}'s Repositories`;
+          repoMeta.textContent = `${repos.length} public repos`;
+
+          renderRepos(sortRepos(sortSelect.value));
+
+          statusEl.textContent = `Loaded ${repos.length} repositories.`;
+          statusEl.className = 'status success';
+
+          localStorage.setItem('github-portfolio-username', username);
+        } catch (error) {
+          repos = [];
+          repoMeta.textContent = '';
+          renderRepos([]);
+
+          statusEl.textContent = error.message;
+          statusEl.className = 'status error';
+        }
+      }
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const username = usernameInput.value.trim();
+        if (!username) return;
+        loadRepos(username);
+      });
+
+      sortSelect.addEventListener('change', () => {
+        renderRepos(sortRepos(sortSelect.value));
+      });
+
+      const savedUsername = localStorage.getItem('github-portfolio-username') || 'octocat';
+      usernameInput.value = savedUsername;
+      loadRepos(savedUsername);
+    </script>
+  </body>
 </html>
