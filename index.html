@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GitHub Club Portfolio</title>
+    <title>GitHub Club | Dada Bhagwan Repository Hub</title>
     <meta
       name="description"
-      content="A polished portfolio hub that displays all repositories from a GitHub account."
+      content="A polished GitHub Club website to explore Dada Bhagwan repositories with search, sorting, filtering, and responsive cards."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -17,26 +17,35 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
+    <div class="bg-blur blur-one" aria-hidden="true"></div>
+    <div class="bg-blur blur-two" aria-hidden="true"></div>
+
     <header class="hero">
       <div class="container">
         <p class="eyebrow">GitHub Club</p>
-        <h1>Your Repositories. One Beautiful Portfolio.</h1>
+        <h1>Dada Bhagwan Repositories, beautifully organized.</h1>
         <p class="subtitle">
-          Enter your GitHub username to instantly generate a modern, responsive,
-          and functional repository showcase.
+          Explore and discover repositories in a smooth, modern interface. This site defaults to
+          <strong>DadaBhagwan</strong> repositories and gives you fast search, sorting, and language filtering.
         </p>
 
         <form id="repoForm" class="repo-form" autocomplete="off">
-          <label for="username" class="sr-only">GitHub username</label>
+          <label for="username" class="sr-only">GitHub username or organization</label>
           <input
             id="username"
             name="username"
             type="text"
-            placeholder="Enter GitHub username (e.g. octocat)"
+            placeholder="GitHub username / org (default: DadaBhagwan)"
             required
           />
           <button type="submit">Load Repositories</button>
         </form>
+
+        <div class="quick-load" aria-label="Quick profile buttons">
+          <button class="chip" data-user="DadaBhagwan" type="button">DadaBhagwan</button>
+          <button class="chip" data-user="github" type="button">GitHub</button>
+          <button class="chip" data-user="octocat" type="button">Octocat</button>
+        </div>
 
         <div id="status" class="status" role="status" aria-live="polite"></div>
       </div>
@@ -45,16 +54,29 @@
     <main class="container">
       <section class="toolbar">
         <div>
-          <h2 id="sectionTitle">All Repositories</h2>
+          <h2 id="sectionTitle">DadaBhagwan Repositories</h2>
           <p id="repoMeta" class="muted"></p>
         </div>
-        <div class="filters">
-          <label for="sort">Sort</label>
-          <select id="sort">
-            <option value="updated">Recently updated</option>
-            <option value="stars">Most starred</option>
-            <option value="name">Name (A-Z)</option>
-          </select>
+
+        <div class="controls">
+          <label class="field">
+            <span>Search</span>
+            <input id="search" type="search" placeholder="Find repo by name or description" />
+          </label>
+          <label class="field">
+            <span>Language</span>
+            <select id="languageFilter">
+              <option value="all">All languages</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Sort</span>
+            <select id="sort">
+              <option value="updated">Recently updated</option>
+              <option value="stars">Most starred</option>
+              <option value="name">Name (A-Z)</option>
+            </select>
+          </label>
         </div>
       </section>
 
@@ -79,6 +101,8 @@
     </template>
 
     <script>
+      const DEFAULT_USER = 'DadaBhagwan';
+
       const form = document.getElementById('repoForm');
       const usernameInput = document.getElementById('username');
       const statusEl = document.getElementById('status');
@@ -86,7 +110,10 @@
       const repoMeta = document.getElementById('repoMeta');
       const sectionTitle = document.getElementById('sectionTitle');
       const sortSelect = document.getElementById('sort');
+      const searchInput = document.getElementById('search');
+      const languageFilter = document.getElementById('languageFilter');
       const repoCardTemplate = document.getElementById('repoCardTemplate');
+      const quickLoadButtons = document.querySelectorAll('.chip[data-user]');
 
       let repos = [];
 
@@ -99,16 +126,46 @@
         });
       }
 
-      function sortRepos(type) {
-        const copy = [...repos];
-        if (type === 'stars') {
-          copy.sort((a, b) => b.stargazers_count - a.stargazers_count);
-        } else if (type === 'name') {
-          copy.sort((a, b) => a.name.localeCompare(b.name));
-        } else {
-          copy.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+      function populateLanguageFilter(data) {
+        const languages = [...new Set(data.map((repo) => repo.language).filter(Boolean))].sort((a, b) =>
+          a.localeCompare(b)
+        );
+
+        languageFilter.innerHTML = '<option value="all">All languages</option>';
+        languages.forEach((language) => {
+          const option = document.createElement('option');
+          option.value = language;
+          option.textContent = language;
+          languageFilter.appendChild(option);
+        });
+      }
+
+      function getProcessedRepos() {
+        const searchTerm = searchInput.value.trim().toLowerCase();
+        const selectedLanguage = languageFilter.value;
+
+        let result = [...repos];
+
+        if (searchTerm) {
+          result = result.filter((repo) => {
+            const haystack = `${repo.name} ${repo.description || ''}`.toLowerCase();
+            return haystack.includes(searchTerm);
+          });
         }
-        return copy;
+
+        if (selectedLanguage !== 'all') {
+          result = result.filter((repo) => repo.language === selectedLanguage);
+        }
+
+        if (sortSelect.value === 'stars') {
+          result.sort((a, b) => b.stargazers_count - a.stargazers_count);
+        } else if (sortSelect.value === 'name') {
+          result.sort((a, b) => a.name.localeCompare(b.name));
+        } else {
+          result.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+        }
+
+        return result;
       }
 
       function renderRepos(data) {
@@ -117,8 +174,8 @@
         if (!data.length) {
           repoGrid.innerHTML = `
             <article class="repo-card empty-state">
-              <h3>No repositories found.</h3>
-              <p class="muted">Try another username or check if the account has public repositories.</p>
+              <h3>No repositories match your filters.</h3>
+              <p class="muted">Try a different search, language, or username.</p>
             </article>
           `;
           return;
@@ -150,6 +207,12 @@
         repoGrid.appendChild(fragment);
       }
 
+      function applyFilters() {
+        const filtered = getProcessedRepos();
+        renderRepos(filtered);
+        repoMeta.textContent = `${filtered.length} shown • ${repos.length} total public repos`;
+      }
+
       async function loadRepos(username) {
         statusEl.textContent = `Loading repositories for @${username}...`;
         statusEl.className = 'status';
@@ -160,19 +223,18 @@
           );
 
           if (!response.ok) {
-            throw new Error(response.status === 404 ? 'User not found.' : 'Unable to fetch repositories.');
+            throw new Error(response.status === 404 ? 'User/org not found.' : 'Unable to fetch repositories.');
           }
 
           repos = await response.json();
-          sectionTitle.textContent = `@${username}'s Repositories`;
-          repoMeta.textContent = `${repos.length} public repos`;
+          sectionTitle.textContent = `@${username} Repositories`;
+          populateLanguageFilter(repos);
+          applyFilters();
 
-          renderRepos(sortRepos(sortSelect.value));
-
-          statusEl.textContent = `Loaded ${repos.length} repositories.`;
+          statusEl.textContent = `Loaded ${repos.length} repositories for @${username}.`;
           statusEl.className = 'status success';
 
-          localStorage.setItem('github-portfolio-username', username);
+          localStorage.setItem('github-club-username', username);
         } catch (error) {
           repos = [];
           repoMeta.textContent = '';
@@ -190,11 +252,19 @@
         loadRepos(username);
       });
 
-      sortSelect.addEventListener('change', () => {
-        renderRepos(sortRepos(sortSelect.value));
+      sortSelect.addEventListener('change', applyFilters);
+      searchInput.addEventListener('input', applyFilters);
+      languageFilter.addEventListener('change', applyFilters);
+
+      quickLoadButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+          const user = button.dataset.user;
+          usernameInput.value = user;
+          loadRepos(user);
+        });
       });
 
-      const savedUsername = localStorage.getItem('github-portfolio-username') || 'octocat';
+      const savedUsername = localStorage.getItem('github-club-username') || DEFAULT_USER;
       usernameInput.value = savedUsername;
       loadRepos(savedUsername);
     </script>
